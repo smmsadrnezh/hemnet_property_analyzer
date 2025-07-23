@@ -16,17 +16,6 @@ from settings import (
     COEFF_MONTHLY_FEE
 )
 
-WEEKDAY_MAP = {
-    'Sön': 'Sun',
-    'Mån': 'Mon',
-    'Tis': 'Tue',
-    'Ons': 'Wed',
-    'Tor': 'Thu',
-    'Fre': 'Fri',
-    'Lör': 'Sat'
-}
-SWEDISH_WEEKDAYS = ['Mån', 'Tis', 'Ons', 'Tor', 'Fre', 'Lör', 'Sön']
-
 
 def clean_text(text):
     if not text:
@@ -64,33 +53,36 @@ def clean_monthly_fee(text):
 
 
 def extract_viewing_and_time(a_tag):
+    WEEKDAY_MAP = {
+        'Sön': 'Sun', 'Mån': 'Mon', 'Tis': 'Tue', 'Ons': 'Wed',
+        'Tor': 'Thu', 'Fre': 'Fri', 'Lör': 'Sat'
+    }
+    SWEDISH_WEEKDAYS = ['Mån', 'Tis', 'Ons', 'Tor', 'Fre', 'Lör', 'Sön']
+
     if not a_tag:
         return '', ''
+
     text = a_tag.get_text()
     pattern = r'(Sön|Mån|Tis|Ons|Tor|Fre|Lör|Idag)\s*(\d{1,2}\s+\w+)?\s*kl\s+\d{1,2}:\d{2}(?:-\d{1,2}:\d{2})?'
     match = re.search(pattern, text)
-    if match:
-        viewing_full = clean_text(match.group(0))
-        # Extract view_time (the 'kl ...' part)
-        time_match = re.search(r'kl\s+(\d{1,2}:\d{2}(?:-\d{1,2}:\d{2})?)', viewing_full)
-        view_time = time_match.group(1) if time_match else ''
-        # Remove 'kl ...' from viewing
-        viewing = viewing_full.replace(time_match.group(0), '').strip() if time_match else viewing_full
-        if viewing.startswith('Idag'):
-            today = datetime.datetime.today()
-            swe_weekday = SWEDISH_WEEKDAYS[today.weekday()]
-            eng_weekday = WEEKDAY_MAP[swe_weekday]
-            day = today.day
-            month = today.strftime('%b').capitalize()
-            viewing = re.sub(r'^Idag', f'{eng_weekday} {day} {month}', viewing)
-        else:
-            for swe, eng in WEEKDAY_MAP.items():
-                if viewing.startswith(swe):
-                    viewing = viewing.replace(swe, eng, 1)
-                    break
-        return viewing, view_time
-    return '', ''
+    if not match:
+        return '', ''
 
+    viewing_full = clean_text(match.group(0))
+    time_match = re.search(r'kl\s+(\d{1,2}:\d{2}(?:-\d{1,2}:\d{2})?)', viewing_full)
+    view_time = time_match.group(1) if time_match else ''
+    viewing = viewing_full.replace(time_match.group(0), '').strip() if time_match else viewing_full
+
+    if viewing.startswith('Idag'):
+        today = datetime.datetime.today()
+        viewing = f"{WEEKDAY_MAP[SWEDISH_WEEKDAYS[today.weekday()]]} {today.day} {today.strftime('%b').capitalize()}"
+    else:
+        for swe, eng in WEEKDAY_MAP.items():
+            if viewing.startswith(swe):
+                viewing = viewing.replace(swe, eng, 1)
+                break
+
+    return viewing, view_time
 
 def extract_property_data(card):
     data = {}
@@ -180,6 +172,7 @@ def parse_floor(floor_str):
             return -1
     return -1
 
+
 def load_html():
     print(
         f"Open the URL {HEMNET_SEARCH_URL}\nin your browser, save the page as 'hemnet.html' in the project path ({os.getcwd()}), then press Enter to continue...")
@@ -192,6 +185,7 @@ def load_html():
     with open(LOCAL_HTML, encoding='utf-8') as f:
         html_content = f.read()
     return html_content
+
 
 def main():
     html_content = load_html()
